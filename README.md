@@ -1,4 +1,4 @@
-This repository is the fork of the official implementation of the paper ["F-COREF: Fast, Accurate and Easy to Use Coreference Resolution"](https://arxiv.org/abs/2209.04280). For all possible usages of the `fastcoref` package please refer to the official repository of the paper. This repository shows examples on how to use the `fastcoref` library for the processing of Ukrainian documents by the corresponding pre-trained model.
+This repository is the fork of the official implementation of the paper ["F-COREF: Fast, Accurate and Easy to Use Coreference Resolution"](https://arxiv.org/abs/2209.04280). For all possible usages of the `fastcoref` package please refer to [the official repository of the paper](https://github.com/shon-otmazgin/fastcoref). This repository shows examples on how to use the `fastcoref` library for the processing of Ukrainian documents by the corresponding pre-trained model.
 
 The `fastcoref` Python package provides an easy and fast API for coreference information with only few lines of code without any prepossessing steps.
 
