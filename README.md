@@ -1,12 +1,10 @@
-This repository is the official implementation of the paper ["F-COREF: Fast, Accurate and Easy to Use Coreference Resolution"](https://arxiv.org/abs/2209.04280).
+This repository is the fork of the official implementation of the paper ["F-COREF: Fast, Accurate and Easy to Use Coreference Resolution"](https://arxiv.org/abs/2209.04280). For all possible usages of the `fastcoref` package please refer to the official repository of the paper. This repository shows examples on how to use the `fastcoref` library for the processing of Ukrainian documents by the corresponding pre-trained model.
 
 The `fastcoref` Python package provides an easy and fast API for coreference information with only few lines of code without any prepossessing steps.
 
-- [Installation](#Installation)
+- [Installation](#installation)
 - [Demo](#demo)
 - [Quick start](#quick-start)
-- [Spacy component](#spacy-component)
-- [Training](#distil-your-own-coref-model)
 - [Citation](#citation)
 
 ## Installation
@@ -17,11 +15,7 @@ pip install fastcoref
 
 ## Demo
 
-**NEW** try out the FastCoref web demo
-
-[![Hugging Face Spaces](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Spaces-blue)](https://huggingface.co/spaces/pythiccoder/FastCoref)
-
-Credit: Thanks to @aribornstein !
+[![Google Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1vsaH15DFDrmKB4aNsQ-9TCQGTW73uk1y?usp=sharing)
 
 ## Quick start
 
@@ -30,35 +24,37 @@ The return value of the function is a list of `CorefResult` objects, from which 
 
 ```python
 from fastcoref import FCoref
+import spacy
 
-model = FCoref(device='cuda:0')
+nlp = spacy.load('uk_core_news_md')
+
+model_path = "artemkramov/coref-ua"
+model = FCoref(model_name_or_path=model_path, device='cuda:0', nlp=nlp)
 
 preds = model.predict(
-   texts=['We are so happy to see you using our coref package. This package is very fast!']
+   texts=["""Мій друг дав мені свою машину та ключі до неї; крім того, він дав мені його книгу. Я з радістю її читаю."""]
 )
 
 preds[0].get_clusters(as_strings=False)
-> [[(0, 2), (33, 36)],
-   [(33, 50), (52, 64)]
-   ]
+> [[(0, 3), (13, 17), (66, 70), (83, 84)],
+ [(0, 8), (18, 22), (58, 61), (71, 75)],
+ [(18, 29), (42, 45)],
+ [(71, 81), (95, 97)]]
 
 preds[0].get_clusters()
-> [['We', 'our'],
-   ['our coref package', 'This package']
-   ]
+> [['Мій', 'мені', 'мені', 'Я'], ['Мій друг', 'свою', 'він', 'його'], ['свою машину', 'неї'], ['його книгу', 'її']]
 
 preds[0].get_logit(
-   span_i=(33, 50), span_j=(52, 64)
+   span_i=(13, 17), span_j=(42, 45)
 )
 
-> 18.852894
+> -6.867196
 ```
 
 if your text is already tokenized use `is_split_into_words=True`
 ```python
 preds = model.predict(
-   texts = [["We", "are", "so", "happy", "to", "see", "you", "using", "our", "coref", 
-             "package", ".", "This", "package", "is", "very", "fast", "!"]],
+   texts = [["Мій", "друг", "дав", "мені", "свою", "машину", "."]],
    is_split_into_words=True
 )
 ```
@@ -77,121 +73,6 @@ preds = model.predict(
 ```
 
 The `max_tokens_in_batch` parameter can be used to control the speed vs. memory consumption (as well as speed vs. accuracy) tradeoff, and can be tuned to maximize the utilization of the associated hardware.
-
-Lastly,
-To use the larger but more accurate [`LingMess`](https://huggingface.co/biu-nlp/lingmess-coref) model, simply import `LingMessCoref` instead of [`FCoref`](https://huggingface.co/biu-nlp/f-coref):
-
-```python
-from fastcoref import LingMessCoref
-
-model = LingMessCoref(device='cuda:0')
-```
-## Spacy component
-
-The package also provides a custom [SpaCy](https://spacy.io/) component that can be plugged into a Spacy(V3) pipeline. 
-The example below shows how to use the pre-trained `FCoref` model.
-
-```python
-from fastcoref import spacy_component
-import spacy
-
-
-text = 'Alice goes down the rabbit hole. Where she would discover a new reality beyond her expectations.'
-
-nlp = spacy.load("en_core_web_sm")
-nlp.add_pipe("fastcoref")
-
-doc = nlp(text)
-doc._.coref_clusters
-> [[(0, 5), (39, 42), (79, 82)]]
-```
-
-**Note**: it is better to `exclude=["parser", "lemmatizer", "ner", "textcat"]` at `spacy.load` since the component only rely on pos tagging.
-
-
-You can also load other models, e.g. the more accurate model `LingMessCoref`:
-
-```python
-nlp.add_pipe(
-   "fastcoref", 
-   config={'model_architecture': 'LingMessCoref', 'model_path': 'biu-nlp/lingmess-coref', 'device': 'cpu'}
-)
-```
-
-By specifying `resolve_text=True` in the pipe call, you can get the resolved text for each cluster:
-
-```python
-doc = nlp(      # for multiple texts use nlp.pipe
-   text, 
-   component_cfg={"fastcoref": {'resolve_text': True}}
-)
-
-doc._.resolved_text
-> "Alice goes down the rabbit hole. Where Alice would discover a new reality beyond Alice's expectations."
-```
-
-## Distil your own coref model
-On top of the provided models, the package also provides the ability to train and distill coreference models on your own data, opening the possibility for fast and accurate coreference models for additional languages and domains.
-
-To be able to distil your own model you need:
-1. A Large unlabeled dataset, for instance Wikipedia or any other source.
-
-   Guidelines:
-   1. Each dataset split (train/dev/test) should be in separate file.
-      1. Each file should be in `jsonlines` format
-      2. Each json line in the file must include at least one of:
-         1. `text: str` - a raw text string.
-         2. `tokens: List[str]` - a list of tokens (tokenized text).
-         3. `sentences: List[List[str]]` - a list of lists of tokens (tokenized sentences).
-      3. `clusters` information (see next for annotation) as a span start/end indices of the provided field `text`(char level) `tokens`(word level) `sentences`(word level)`.
-
-
-2. A model to annotate the clusters. For instance, It can be the package `LingMessCoref` model.
-```python
-from fastcoref import LingMessCoref
-
-model = LingMessCoref()
-preds = model.predict(texts=texts, output_file='train_file_with_clusters.jsonlines')
-
-```
-
-3. Train and evaluate your own `FCoref`
-```python
-from fastcoref import TrainingArgs, CorefTrainer
-
-args = TrainingArgs(
-    output_dir='test-trainer',
-    overwrite_output_dir=True,
-    model_name_or_path='distilroberta-base',
-    device='cuda:2',
-    epochs=129,
-    logging_steps=100,
-    eval_steps=100
-)   # you can control other arguments such as learning head and others.
-
-trainer = CorefTrainer(
-    args=args,
-    train_file='train_file_with_clusters.jsonlines', 
-    dev_file='path-to-dev-file',    # optional
-    test_file='path-to-test-file'   # optional
-)
-trainer.train()
-trainer.evaluate(test=True)
-
-trainer.push_to_hub('your-fast-coref-model-path')
-
-```
-
-After finish training your own model, push the model the huggingface hub (or keep it local), and load your model:
-```python
-from fastcoref import FCoref
-
-model = FCoref(
-   model_name_or_path='your-fast-coref-model-path',
-   device='cuda:0'
-)
-```
-
 
 ## Citation
 
